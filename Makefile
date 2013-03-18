@@ -10,7 +10,7 @@ tmc-check-example: $(SRC_FILES) $(HEADER_FILES)
 	gcc $(CHECK_CFLAGS) -Wall -o $@ $(SRC_FILES) $(CHECK_LDFLAGS)
 
 clean:
-	rm -f tmc-check-example tmc_available_points.txt tmc_test_results.xml
+	rm -f tmc-check-example tmc_available_points.txt tmc_test_results.xml tmc_memory_test_info.txt
 
 run-example: tmc-check-example
 	# Printing available points

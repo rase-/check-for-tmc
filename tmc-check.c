@@ -27,14 +27,34 @@ typedef struct PointsList
     struct PointsList *next;
 } PointsList;
 
+typedef struct MemTest
+{
+    const char *tf_name;
+    int check_leaks;
+    int max_bytes_allocated; // Value -1 will represent no max_alloc check
+    struct MemTest *next;
+} MemTest;
+
 static PointsAssoc *points_assocs = NULL;
 static SuitePoints *suite_points = NULL;
 static PointsList *all_points = NULL;
+static MemTest *memtests = NULL;
 
 static void parse_points(const char *points, PointsList **target_list);
 static void add_to_point_set(const char *point, ssize_t len, PointsList **target_list);
 static int points_list_contains(const PointsList *list, const char *point, ssize_t len);
 
+void _tmc_register_memtest(const char *tf_name, int check_leaks, int max_bytes_allocated)
+{
+    MemTest *memtest = malloc(sizeof(MemTest));
+    memtest->tf_name = tf_name;
+    memtest->check_leaks = check_leaks;
+    memtest->max_bytes_allocated = max_bytes_allocated;
+
+    memtest->next = memtests;
+    memtests = memtest;
+}
+    
 void tmc_set_tcase_points(TCase *tc, const char *tc_name, const char *points)
 {
     PointsAssoc *pa = (PointsAssoc*)malloc(sizeof(PointsAssoc));
@@ -81,9 +101,14 @@ int tmc_run_tests(int argc, const char **argv, Suite *s)
         if (strcmp(argv[i], "--print-available-points") == 0) {
             return tmc_print_available_points(stdout, '\n');
         }
+
+        if (strcmp(argv[i], "--print-memory-tests") == 0) {
+            return tmc_print_memory_tests(stdout, ' ', '\n');
+        }
     }
 
     FILE *points_file = fopen("tmc_available_points.txt", "wb");
+    FILE *memtest_file = fopen("tmc_memory_test_info.txt", "wb");
     if (tmc_print_suite_points(points_file) != 0) {
         fclose(points_file);
         return EXIT_FAILURE;
@@ -92,7 +117,12 @@ int tmc_run_tests(int argc, const char **argv, Suite *s)
         fclose(points_file);
         return EXIT_FAILURE;
     }
+    if (tmc_print_memory_tests(memtest_file, ' ', '\n') != 0) {
+        fclose(memtest_file);
+        return EXIT_FAILURE;
+    }
     fclose(points_file);
+    fclose(memtest_file);
 
     SRunner *sr = srunner_create(s);
     srunner_set_xml(sr, "tmc_test_results.xml");
@@ -109,6 +139,22 @@ int tmc_print_available_points(FILE *f, char delimiter)
         fputs(pl->point, f);
         fputc(delimiter, f);
         pl = pl->next;
+    }
+    fflush(f);
+    return 0;
+}
+
+int tmc_print_memory_tests(FILE *f, char attr_delimiter, char line_delimiter)
+{
+    const MemTest *mt = memtests;
+    while (mt != NULL) {
+        fputs(mt->tf_name, f);
+        fputc(attr_delimiter, f);
+        fprintf(f, "%d", mt->check_leaks);
+        fputc(attr_delimiter, f);
+        fprintf(f, "%d", mt->max_bytes_allocated);
+        fputc(line_delimiter, f);
+        mt = mt->next;
     }
     fflush(f);
     return 0;
