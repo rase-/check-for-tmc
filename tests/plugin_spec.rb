@@ -41,6 +41,23 @@ describe 'TMC C plugin' do
     lines = f.readlines
     lines.first.split(" ").count.should == 5
     lines[1].split(" ").count.should == 3
-    lines.last.split(" ").count.should == 4c
+    lines.last.split(" ").count.should == 4
+  end
+
+  it "produces a memtest file containing one row, since only one memtest is registered" do
+    f = File.open("tmc_memory_test_info.txt")
+    lines = f.readlines
+    f.close
+    lines.count.should == 1
+  end
+
+  it "has one memtest for test with name test_foo, testing for memory leaks and maximum heapsize of 10" do
+    f = File.open("tmc_memory_test_info.txt")
+    lines = f.readlines
+    f.close
+    split_line = lines.first.split " "
+    split_line.first.should == "test_foo"
+    split_line[1].should == "1"
+    split_line.last.should == "10"
   end
 end
